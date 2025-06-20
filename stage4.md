@@ -4,21 +4,21 @@
 
 在此，我首先要感谢陈渝老师，您在每周学习中给予的指导和鼓励，成为了我前进的坚实支柱。同时，我也非常感谢其他同学，在第四阶段的学习中，我从大家那里学到了很多，无论是便捷地获取学习资料和代码，还是在遇到疑惑时能找到理解并深入探讨技术的伙伴，都让我受益匪浅。
 
-经历完这四个阶段，我取得了显著的收获：不仅深刻理解了操作系统内部的运行机制，更掌握了通过组件化管理实现现代化操作系统的方法。具体而言，我成功完成了`arceos-org/oscamp`的`aarch64`架构支持，并为`starry-next`适配了`iperf`的`tcp`部分。
+经历完这四个阶段，我取得了显著的收获：不仅深刻理解了操作系统内部的运行机制，更掌握了通过组件化管理实现现代化操作系统的方法。具体而言，我成功完成了`arceos-org/oscamp`的`aarch64`架构支持，并为`starry-next`适配了`iperf`的`TCP`部分。
 
 # 任务1 完成`arceos-org/oscamp`的`aarch64`架构的支持
 
 
 
-1. 使用`QEMU`的`monitor info mtree` 和`monitor info block` 找出`pflash`区域，并在`aarch64-qemu-virt.toml`中增加正确的映射区域，在`tour`代码中写入正确的`PFLASH_START`（https://github.com/879650736/oscamp/blob/main/arceos/platforms/aarch64-qemu-virt.toml ）
+1. 使用`QEMU`的`monitor info mtree` 和`monitor info block` 找出`pflash`区域，并在[aarch64-qemu-virt.toml](https://github.com/879650736/oscamp/blob/main/arceos/platforms/aarch64-qemu-virt.toml)中增加正确的映射区域，在`tour`代码中写入正确的`PFLASH_START`
 
-2. 增加了`aarch64`部分的`uspace`代码(https://github.com/879650736/oscamp/blob/main/arceos/modules/axhal/src/arch/aarch64/context.rs )，进行适配
+2. 增加了`aarch64`部分的[uspace](https://github.com/879650736/oscamp/blob/main/arceos/modules/axhal/src/arch/aarch64/context.rs)代码，进行适配
 
-3. 对`makefile`(https://github.com/879650736/oscamp/blob/main/arceos/Makefile )内的规则进行修改，修改`payload`、`mk_pflash`(https://github.com/879650736/oscamp/blob/main/arceos/scripts/make/utils.mk )对其他架构进行适配
+3. 对[makefile](https://github.com/879650736/oscamp/blob/main/arceos/Makefile)内的规则进行修改，修改[`payload`、`mk_pflash`](https://github.com/879650736/oscamp/blob/main/arceos/scripts/make/utils.mk)对其他架构进行适配
 
-4. 增加`payload`(https://github.com/879650736/oscamp/blob/main/arceos/payload/Makefile )(https://github.com/879650736/oscamp/blob/main/arceos/payload/hello_c/Makefile )(https://github.com/879650736/oscamp/blob/main/arceos/payload/origin/Makefile )内其他架构的编译规则，使`payload`对其他架构也能适配
+4. 增加[payload](https://github.com/879650736/oscamp/blob/main/arceos/payload/Makefile)(https://github.com/879650736/oscamp/blob/main/arceos/payload/hello_c/Makefile )(https://github.com/879650736/oscamp/blob/main/arceos/payload/origin/Makefile )内其他架构的编译规则，使`payload`对其他架构也能适配
 
-5. 增加`aarch64`的CI测试,并测试通过(https://github.com/879650736/oscamp/blob/main/scripts/tour_test.sh)
+5. 增加[aarch64](https://github.com/879650736/oscamp/blob/main/scripts/tour_test.sh)的CI测试,并测试通过
 
 6. pr：https://github.com/arceos-org/oscamp/pull/9
 
@@ -30,15 +30,15 @@
 
 2. 提交https://github.com/oscomp/testsuits-for-oskernel/pull/52 。在为 `starry-next` 兼容 `iperf`的过程中，我发现一个段错误问题。具体来说，如果在` cJSON_New_Item` 函数中未对全局变量 `global_hooks`进行初始化，会导致空指针访问。然而，当我单独编译` cJSON `的相关代码时，并未复现此异常。我推测这可能是由于编译为 ELF 文件时，编译器进行了某种优化所致。将 `global_hooks `的初始化操作增加到`cJSON_New_Item `函数的起始位置后，该段错误便得以消除。
 
-3. `musl`无`openssl`库，使用`build_riscv.sh` (https://github.com/879650736/starry-next-net/blob/test/apps/iperf/build_riscv.sh ), 进行openssl库的交叉编译
+3. `musl`无`openssl`库，使用[build_riscv.sh](https://github.com/879650736/starry-next-net/blob/test/apps/iperf/build_riscv.sh), 进行openssl库的交叉编译
 
-4. 创建`iperf_wrap`(https://github.com/879650736/starry-next-net/blob/test/apps/iperf_wrap/Makefile )， 进行本地编译载入测试
+4. 创建[iperf_wrap](https://github.com/879650736/starry-next-net/blob/test/apps/iperf_wrap/Makefile)， 进行本地编译载入测试
 
-5. 在`arceos/modules/axfs/src/mount.rs`中增加`/dev/urandom`的挂载,并增加了一个简单的`urandom`的实现(https://github.com/879650736/axfs_crates/blob/main/axfs_devfs/src/urandom.rs )
+5. 在`arceos/modules/axfs/src/mount.rs`中增加`/dev/urandom`的挂载,并增加了一个简单的[urandom](https://github.com/879650736/axfs_crates/blob/main/axfs_devfs/src/urandom.rs)的实现
 
-6. 修改iperf中 `autoreconf`的`configure.ac`，增加`--disable-xxxx`选项的支持( https://github.com/879650736/testsuits-for-oskernel/blob/pre-2025/iperf/configure.ac )
+6. 修改iperf中 `autoreconf`的[configure.ac](https://github.com/879650736/testsuits-for-oskernel/blob/pre-2025/iperf/configure.ac)，增加`--disable-xxxx`选项的支持
 
-7. 实现可增加`--disable`参数去除部分 Linux 特有的选项如`SO_MAX_PACING_RATE`、`SO_BINDTODEVICE`、`IP_MTU_DISCOVER`等，为交叉编译提供支持，参考 ( https://github.com/879650736/testsuits-for-oskernel/blob/pre-2025/iperf/build.sh ),宏定义生成结果可通过`src/iperf_config.h`查看，也为调试提供方便。
+7. 实现可增加`--disable`参数去除部分 Linux 特有的选项如`SO_MAX_PACING_RATE`、`SO_BINDTODEVICE`、`IP_MTU_DISCOVER`等，为交叉编译提供支持，参考 [build.sh](https://github.com/879650736/testsuits-for-oskernel/blob/pre-2025/iperf/build.sh),宏定义生成结果可通过`src/iperf_config.h`查看，也为调试提供方便。
 
 8.  允许用户在配置 `iperf3` 时，通过命令行参数禁用特定的功能或特性，特别是那些可能与特定操作系统（如 Linux）紧密相关的特性，以便于在其他平台或进行交叉编译时避免兼容性问题。
   - 在 `configure.ac` 文件中使用 `AC_ARG_ENABLE` 宏来定义新的配置选项。
@@ -121,29 +121,29 @@
 
     ```
 
-9. 在`api/src/imp/net`中进行`socket`的`syscall`的适配(https://github.com/879650736/starry-next-net/tree/test/api/src/imp )
+9. 在`api/src/imp`中进行[syscall](https://github.com/879650736/starry-next-net/tree/test/api/src/imp)的适配
 
-   新增以下调用
+  - 新增调用列表
 
-   - `sys_getsockname`、`sys_getpeername`: https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/getsock.rs
+   - [`sys_getsockname`、`sys_getpeername`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/getsock.rs)
 
-   - `sys_poll`、`sys_ppoll` ：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/poll.rs
+   - [`sys_poll`、`sys_ppoll`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/poll.rs)
 
-   - `sys_recvfrom`:https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/recv.rs
+   - [`sys_recvfrom`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/recv.rs)
 
-   - `sys_select`、`sys_pselect6`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/select.rs
+   - [`sys_select`、`sys_pselect6`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/select.rs)
 
-   - `sys_sendto`:https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/send.rs
+   - [`sys_sendto`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/send.rs)
 
-   - `sys_socket`、`sys_socketpair`、`sys_bind`、`sys_connect`、`sys_setsockopt`、`sys_getsockopt`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/socket.rs
+   - [`sys_socket`、`sys_socketpair`、`sys_bind`、`sys_connect`、`sys_setsockopt`、`sys_getsockopt`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/socket.rs)
 
-   - `sys_fcntl`的`F_GETFL`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/fs/fd_ops.rs
+   - [`sys_fcntl`的`F_GETFL`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/fs/fd_ops.rs)
 
-   - `sys_ftruncate`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/fs/io.rs
+   - [`sys_ftruncate`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/fs/io.rs)
 
-   - `sys_getrusage`:https://github.com/879650736/starry-next-net/blob/test/api/src/imp/rusage.rs
+   - [`sys_getrusage`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/rusage.rs)
 
-   - `sys_clock_gettime`的`CLOCK_PROCESS_CPUTIME_ID`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/time.rs
+   - [`sys_clock_gettime`的`CLOCK_PROCESS_CPUTIME_ID`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/time.rs)
 
 10. 对于跨平台elf调试，使用
 
