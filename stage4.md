@@ -10,15 +10,15 @@
 
 
 
-1. 使用`QEMU`的`monitor info mtree` 和`monitor info block` 找出`pflash`区域，并在`aarch64-qemu-virt.toml`中增加正确的映射区域，在`tour`代码中写入正确的`PFLASH_START`
+1. 使用`QEMU`的`monitor info mtree` 和`monitor info block` 找出`pflash`区域，并在`aarch64-qemu-virt.toml`中增加正确的映射区域，在`tour`代码中写入正确的`PFLASH_START`（https://github.com/879650736/oscamp/blob/main/arceos/platforms/aarch64-qemu-virt.toml ）
 
-2. 增加了`aarch64`部分的`uspace`代码，进行适配
+2. 增加了`aarch64`部分的`uspace`代码(https://github.com/879650736/oscamp/blob/main/arceos/modules/axhal/src/arch/aarch64/context.rs )，进行适配
 
-3. 对`makefile`内的规则进行修改，修改`payload`、`mk_pflash`对其他架构进行适配
+3. 对`makefile`(https://github.com/879650736/oscamp/blob/main/arceos/Makefile )内的规则进行修改，修改`payload`、`mk_pflash`(https://github.com/879650736/oscamp/blob/main/arceos/scripts/make/utils.mk )对其他架构进行适配
 
-4. 增加`payload`内其他架构的编译规则，使`payload`对其他架构也能适配
+4. 增加`payload`(https://github.com/879650736/oscamp/blob/main/arceos/payload/Makefile )(https://github.com/879650736/oscamp/blob/main/arceos/payload/hello_c/Makefile )(https://github.com/879650736/oscamp/blob/main/arceos/payload/origin/Makefile )内其他架构的编译规则，使`payload`对其他架构也能适配
 
-5. 增加`aarch64`的CI测试,并测试通过
+5. 增加`aarch64`的CI测试,并测试通过(https://github.com/879650736/oscamp/blob/main/scripts/tour_test.sh)
 
 6. pr：https://github.com/arceos-org/oscamp/pull/9
 
@@ -40,7 +40,88 @@
 
 7. 实现可增加`--disable`参数去除部分 Linux 特有的选项如`SO_MAX_PACING_RATE`、`SO_BINDTODEVICE`、`IP_MTU_DISCOVER`等，为交叉编译提供支持，参考 ( https://github.com/879650736/testsuits-for-oskernel/blob/pre-2025/iperf/build.sh ),宏定义生成结果可通过`src/iperf_config.h`查看，也为调试提供方便。
 
-8. 在`api/src/imp/net`中进行`socket`的`syscall`的适配(https://github.com/879650736/starry-next-net/tree/test/api/src/imp )
+8.  允许用户在配置 `iperf3` 时，通过命令行参数禁用特定的功能或特性，特别是那些可能与特定操作系统（如 Linux）紧密相关的特性，以便于在其他平台或进行交叉编译时避免兼容性问题。
+  - 在 `configure.ac` 文件中使用 `AC_ARG_ENABLE` 宏来定义新的配置选项。
+  - 以 `--disable-have-dont-fragment` 为例
+    ```bash
+    # Check if Don't Fragment support should be disabled
+    AC_ARG_ENABLE([have-dont-fragment],
+        [AS_HELP_STRING([--disable-have-dont-fragment], [Disable Don't Fragment (DF) packet support])],
+        [
+            case "$enableval" in
+            yes|"")
+                disable_have_dont_fragment=false
+                ;;
+            no)
+                disable_have_dont_fragment=true
+                ;;
+            *)
+                AC_MSG_ERROR([Invalid --enable-have-dont-fragment value])
+                ;;
+            esac
+        ],
+        [disable_have_dont_fragment=false]
+    )
+
+    if test "x$disable_have_dont_fragment" = "xtrue"; then
+        AC_MSG_WARN([Don't Fragment (DF) packet support disabled by user])
+    else
+        if test "x$iperf3_cv_header_dontfragment" = "xyes"; then
+            AC_DEFINE([HAVE_DONT_FRAGMENT], [1], [Have IP_MTU_DISCOVER/IP_DONTFRAG/IP_DONTFRAGMENT sockopt.])
+        fi
+    fi
+    ```
+    `AC_ARG_ENABLE([have-dont-fragment], ...)` 定义了 `--disable-have-dont-fragment` 选项。
+    如果用户指定了 `--disable-have-dont-fragment`，则 `disable_have_dont_fragment` 变量被设置为 `true`。
+    如果 `disable_have_dont_fragment` 为 `true`，则会发出警告，并且不会定义 `HAVE_DONT_FRAGMENT` 宏。
+    否则（用户未禁用），并且如果 `Autoconf` 之前的检查 (`iperf3_cv_header_dontfragment`) 确认系统支持 `IP_MTU_DISCOVER` 等选项，则会定义 `HAVE_DONT_FRAGMENT` 宏。
+  - 针对 Linux 特有的套接字选项（如 `SO_MAX_PACING_RATE`、`SO_BINDTODEVICE、IP_MTU_DISCOVER`），提供 `--disable` 选项，以便在非 Linux 环境下（如交叉编译到嵌入式系统或其他操作系统）能够顺利编译，避免因缺少这些特性而导致的编译错误。
+    其通用模式
+    ```bash
+    # 定义一个名为 'have-feature-name' 的选项
+    AC_ARG_ENABLE([have-feature-name],
+        [AS_HELP_STRING([--disable-have-feature-name], [Disable support for Feature Name])],
+        [
+            case "$enableval" in
+            yes|"")
+                disable_feature_name=false
+                ;;
+            no)
+                disable_feature_name=true
+                ;;
+            *)
+                AC_MSG_ERROR([Invalid --enable-have-feature-name value])
+                ;;
+            esac
+        ],
+        [disable_feature_name=false] # 默认启用
+    )
+
+    # 根据用户选择和系统检测结果，决定是否定义宏
+    if test "x$disable_feature_name" = "xtrue"; then
+        AC_MSG_WARN([Feature Name support disabled by user])
+    else
+        # 这里可以添加额外的系统特性检测，例如检查头文件、函数或套接字选项
+        # if test "x$ac_cv_header_some_header" = "xyes"; then
+            AC_DEFINE([HAVE_FEATURE_NAME], [1], [Description of the feature macro.])
+        # fi
+    fi
+    ```
+  - 当修改了 `configure.ac` 文件后，仅仅保存文件是不够的。`configure.ac` 是 `Autoconf` 的输入文件，它需要被处理才能生成实际的 `configure` 脚本。这个处理过程就是通过运行 `autoreconf` 命令来完成的。
+    - `autoreconf` 命令会执行一系列工具（如 `aclocal`, `autoconf`, `autoheader`, `automake` 等），它们会：
+
+      1. 处理 `configure.ac`： 将 `configure.ac` 中的 `Autoconf` 宏转换为可执行的 `shell` 脚本代码，生成 `configure` 脚本。
+      2. 生成 `config.h.in`： 如果你的 `configure.ac` 中使用了 `AC_CONFIG_HEADERS`，`autoheader` 会根据 `AC_DEFINE` 等宏生成 `config.h.in` 文件，这是一个模板文件，最终会被 `configure` 脚本处理成 `config.h`。
+      3. 处理 `Makefile.am`： 如果项目使用了 `Automake`，`automake` 会处理 `Makefile.am` 文件，生成 `Makefile.in`。
+      因此，每次修改 `configure.ac` 后，你都必须在项目根目录运行 `autoreconf -fi` 命令，以确保这些修改能够体现在新生成的 `configure` 脚本中。 否则，你新添加的 `--disable-xxxx` 选项将不会被识别。
+  - 在 `build.sh` 脚本中，可以根据编译目标或环境变量来决定是否添加这些 `--disable` 参数。
+    ``` bash
+    ./configure --disable-have-dont-fragment --disable-openssl --disable-cpu-affinity  
+    ........
+
+    ```
+
+9. 在`api/src/imp/net`中进行`socket`的`syscall`的适配(https://github.com/879650736/starry-next-net/tree/test/api/src/imp )
 
    新增以下调用
 
@@ -48,7 +129,7 @@
 
    - `sys_poll`、`sys_ppoll` ：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/poll.rs
 
-   - sys_recvfrom:https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/recv.rs
+   - `sys_recvfrom`:https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/recv.rs
 
    - `sys_select`、`sys_pselect6`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/net/select.rs
 
@@ -64,16 +145,15 @@
 
    - `sys_clock_gettime`的`CLOCK_PROCESS_CPUTIME_ID`：https://github.com/879650736/starry-next-net/blob/test/api/src/imp/time.rs
 
-9. 对于跨平台elf调试，使用
+10. 对于跨平台elf调试，使用
 
    ```c
    int i = 1;
    assert(i == 0);
    ```
-
    进行手动打断点结合`printf`一步步调试，最终找到https://github.com/oscomp/testsuits-for-oskernel/pull/52的段错误的具体问题。
 
-10. `iperf3`测量原理
+11. `iperf3`测量原理
 
     - **基本工作流程：**
       1. **服务器端启动：** 一台机器作为服务器端，启动 `iperf3` 并监听特定端口，等待客户端连接。
@@ -117,7 +197,7 @@
     
     - 关键设计点：
     
-      - 处理程序中断信号（如 `Ctrl+C`）的机制。它使用了 `signal` 和 `setjmp/longjmp` 组合来实现非局部跳转，以便在接收到中断信号时能够优雅地退出并报告结果。
+      - ### 处理程序中断信号（如 `Ctrl+C`）的机制。它使用了 `signal` 和 `setjmp/longjmp` 组合来实现非局部跳转，以便在接收到中断信号时能够优雅地退出并报告结果。
     
       - `iperf_catch_sigend` 函数
       
@@ -140,7 +220,7 @@
       
         这段代码将 `sigend_handler` 函数注册为 `SIGINT`, `SIGTERM`, `SIGHUP` 这三个信号的处理函数。这意味着当程序接收到这些信号中的任何一个时，`sigend_handler` 函数就会被调用。
       
-      - 信号处理的设置和跳转点
+      - ### 信号处理的设置和跳转点
       
         ```c
         iperf_catch_sigend(sigend_handler); // 注册信号处理函数
@@ -154,7 +234,7 @@
           第一次调用时（正常执行流程）： 它会保存当前程序的执行上下文到` sigend_jmp_buf` 中，并返回 0。因此，`if (setjmp(...)) `条件为假，程序会继续执行 if 语句块后面的代码。
         - 当 `longjmp `被调用时（从信号处理函数中）：` longjmp` 会使用 `sigend_jmp_buf`中保存的上下文，使程序“跳回”到 `setjmp` 被调用的位置。此时，`setjmp` 会返回` longjmp` 传递的非零值（这里是 1）。因此，`if (setjmp(...)) `条件为真，if 语句块内的代码会被执行。
         
-      - `sigend_handler` 函数
+      - ### `sigend_handler` 函数
       
         ```c
         static jmp_buf sigend_jmp_buf; // 用于存储跳转上下文的缓冲区
@@ -166,25 +246,25 @@
         
         ```
         
-        
-        
         - 这是实际的信号处理函数。
           `__attribute__ ((noreturn))`： 这是一个 GCC 扩展属性，告诉编译器这个函数不会返回（即它会通过 longjmp 跳转出去，而不是正常返回）。这有助于编译器进行优化，并避免一些警告。
           `longjmp(sigend_jmp_buf, 1);`： 这是核心操作。当` SIGINT`、`SIGTERM` 或 `SIGHUP` 信号被捕获时，这个函数会被调用，然后它会执行` longjmp`。
         - `longjmp` 会将程序的执行流从当前位置（信号处理函数内部）直接跳转到 `setjmp(sigend_jmp_buf) `所在的位置。
         
-      - `iperf_got_sigend` 函数
+      - ### `iperf_got_sigend` 函数
       
         - 捕获到中断信号后，实际执行清理、报告和退出的函数
       
       - 这段代码实现了一个健壮的信号处理机制，确保 `iperf3` 在接收到中断信号（如 `Ctrl+C`）时，能够：
       
-      1. 立即停止当前的数据传输。
-      2. 收集并报告截至中断时的所有统计数据。
-      3. 通过控制连接通知另一端的 iperf3 进程，以便对方也能感知到测试的结束并进行相应的处理。
-      4. 最终优雅地退出程序。
-
-
+        1. 立即停止当前的数据传输。
+        2. 收集并报告截至中断时的所有统计数据。
+        3. 通过控制连接通知另一端的 iperf3 进程，以便对方也能感知到测试的结束并进行相应的处理。
+        4. 最终优雅地退出程序。
+  
+## 适配成功：
+  ![iperf-V](./iperf-V.png)
+  ![iperf-c](./iperf-c.png)
 
 
 
