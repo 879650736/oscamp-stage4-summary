@@ -75,8 +75,8 @@
     如果用户指定了 `--disable-have-dont-fragment`，则 `disable_have_dont_fragment` 变量被设置为 `true`。
     如果 `disable_have_dont_fragment` 为 `true`，则会发出警告，并且不会定义 `HAVE_DONT_FRAGMENT` 宏。
     否则（用户未禁用），并且如果 `Autoconf` 之前的检查 (`iperf3_cv_header_dontfragment`) 确认系统支持 `IP_MTU_DISCOVER` 等选项，则会定义 `HAVE_DONT_FRAGMENT` 宏。
-  - 针对 Linux 特有的套接字选项（如 `SO_MAX_PACING_RATE`、`SO_BINDTODEVICE、IP_MTU_DISCOVER`），提供 `--disable` 选项，以便在非 Linux 环境下（如交叉编译到嵌入式系统或其他操作系统）能够顺利编译，避免因缺少这些特性而导致的编译错误。
-    其通用模式
+  - 针对 Linux 特有的套接字选项（如 `SO_MAX_PACING_RATE`、`SO_BINDTODEVICE、IP_MTU_DISCOVER`），提供 `--disable` 选项，以便在非 Linux 环境下（如交叉编译到嵌入式系统或其他操作系统）能够顺利编译，避免因缺少这些特性而导致的在其他环境下的运行错误。
+    - 其通用模式
     ```bash
     # 定义一个名为 'have-feature-name' 的选项
     AC_ARG_ENABLE([have-feature-name],
