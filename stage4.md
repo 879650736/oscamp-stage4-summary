@@ -151,7 +151,7 @@
    int i = 1;
    assert(i == 0);
    ```
-   进行手动打断点结合`printf`一步步调试，最终找到https://github.com/oscomp/testsuits-for-oskernel/pull/52的段错误的具体问题。
+   进行手动打断点结合`printf`一步步调试，最终找到https://github.com/oscomp/testsuits-for-oskernel/pull/52 的段错误的具体问题。
 
 11. `iperf3`测量原理
 
