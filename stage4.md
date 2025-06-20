@@ -155,112 +155,112 @@
 
 11. `iperf3`测量原理
 
-    - **基本工作流程：**
-      1. **服务器端启动：** 一台机器作为服务器端，启动 `iperf3` 并监听特定端口，等待客户端连接。
-      2. **客户端启动：** 另一台机器作为客户端，启动 `iperf3` 并指定服务器的IP地址和端口，发起连接请求。
-      3. **数据传输：** 连接建立后，客户端或服务器（取决于测试模式）开始发送数据包。
-      4. **性能测量：** 双方在数据传输过程中记录时间、传输数据量、丢包等信息。
-      5. **结果报告：** 传输结束后，客户端和/或服务器会计算并报告测量的网络性能指标。
+  - **基本工作流程：**
+    1. **服务器端启动：** 一台机器作为服务器端，启动 `iperf3` 并监听特定端口，等待客户端连接。
+    2. **客户端启动：** 另一台机器作为客户端，启动 `iperf3` 并指定服务器的IP地址和端口，发起连接请求。
+    3. **数据传输：** 连接建立后，客户端或服务器（取决于测试模式）开始发送数据包。
+    4. **性能测量：** 双方在数据传输过程中记录时间、传输数据量、丢包等信息。
+    5. **结果报告：** 传输结束后，客户端和/或服务器会计算并报告测量的网络性能指标。
 
-    - 在本机`apt install iperf3`后，自动安装并自启动了`/usr/lib/systemd/system/iperf3.service`
+  - 在本机`apt install iperf3`后，自动安装并自启动了`/usr/lib/systemd/system/iperf3.service`
 
-      ``` plain text 
-       iperf3.service - iperf3 server
-           Loaded: loaded (/usr/lib/systemd/system/iperf3.service; enabled; preset: enabl>
-           Active: active (running) since Fri 2025-06-20 05:23:30 UTC; 7h ago
-             Docs: man:iperf3(1)
-         Main PID: 1326 (iperf3)
-            Tasks: 1 (limit: 9434)
-           Memory: 472.0K (peak: 5.4M swap: 440.0K swap peak: 440.0K)
-              CPU: 30.580s
-           CGroup: /system.slice/iperf3.service
-                   └─1326 /usr/bin/iperf3 --server --interval 0
+    ``` plain text 
+      iperf3.service - iperf3 server
+          Loaded: loaded (/usr/lib/systemd/system/iperf3.service; enabled; preset: enabl>
+          Active: active (running) since Fri 2025-06-20 05:23:30 UTC; 7h ago
+            Docs: man:iperf3(1)
+        Main PID: 1326 (iperf3)
+          Tasks: 1 (limit: 9434)
+          Memory: 472.0K (peak: 5.4M swap: 440.0K swap peak: 440.0K)
+            CPU: 30.580s
+          CGroup: /system.slice/iperf3.service
+                  └─1326 /usr/bin/iperf3 --server --interval 0
+    ```
+
+      每次开机后，`systemd` 会根据 `iperf3.service` 的定义，自动启动 `/usr/bin/iperf3 --server --interval 0` 命令，使其作为后台服务持续运行，等待客户端连接。
+    
+  - 当你在本机运行 `iperf3 -c 127.0.0.1` 时，这个命令会启动一个 `iperf3` 客户端进程。这个客户端进程会尝试连接到 `127.0.0.1`（即本机）上正在监听的 `iperf3` 服务器。`iperf3 -c 127.0.0.1` 会向服务器发送数据包，服务器接收这些包并进行统计。客户端也会统计发送的数据量和时间，最终报告发送端的吞吐量。
+
+  - 客户端和服务器之间建立 TCP 连接（默认）。客户端以尽可能快的速度向服务器发送数据，服务器接收并记录数据量。双方都记录开始和结束时间。通过传输的数据量除以传输时间，即可计算出吞吐量。
+
+  - 在`qemu`内运行的`starry-next`同理，因为`qemu`与主机是通过`NAT`。在 `qemu` 虚拟机内部运行的 `starry-next`（假设它也包含 `iperf3` 客户端或服务器）与主机之间的网络通信，会经过 `qemu` 的网络虚拟化层。
+
+  - 当 `qemu` 使用 NAT（网络地址转换）模式时，虚拟机拥有一个私有 IP 地址，它通过主机的 IP 地址访问外部网络。对于虚拟机来说，主机看起来像一个路由器。
+
+  - 场景 : `qemu` 内的 `iperf3` 客户端连接到主机上的 `iperf3` 服务器。
+
+    - `qemu` 虚拟机内的 `iperf3 -c <主机IP地址>`。
+    - 数据流：`qemu` 客户端 -> `qemu` 虚拟网卡 -> `qemu` NAT 转换 -> 主机物理网卡 -> 主机 `iperf3` 服务器。
+    - 这种测试测量的是虚拟机到主机之间的网络性能，包括 `qemu` NAT 层的开销。
+    
+  - 无论哪种场景，`iperf3` 的基本客户端-服务器通信原理不变。`qemu` 的 NAT 模式只是在网络路径中增加了一个虚拟化的层，`iperf3` 测量的是经过这个虚拟化层后的实际吞吐量。 
+  
+  - 关键设计点：
+  
+    - ### 处理程序中断信号（如 `Ctrl+C`）的机制。它使用了 `signal` 和 `setjmp/longjmp` 组合来实现非局部跳转，以便在接收到中断信号时能够优雅地退出并报告结果。
+  
+    - `iperf_catch_sigend` 函数
+    
+      ``` c
+      void
+      iperf_catch_sigend(void (*handler)(int))
+      {
+      #ifdef SIGINT
+          signal(SIGINT, handler);
+      #endif
+      #ifdef SIGTERM
+          signal(SIGTERM, handler);
+      #endif
+      #ifdef SIGHUP
+          signal(SIGHUP, handler);
+      #endif
+      }
+      
       ```
-
-       每次开机后，`systemd` 会根据 `iperf3.service` 的定义，自动启动 `/usr/bin/iperf3 --server --interval 0` 命令，使其作为后台服务持续运行，等待客户端连接。
-      
-    - 当你在本机运行 `iperf3 -c 127.0.0.1` 时，这个命令会启动一个 `iperf3` 客户端进程。这个客户端进程会尝试连接到 `127.0.0.1`（即本机）上正在监听的 `iperf3` 服务器。`iperf3 -c 127.0.0.1` 会向服务器发送数据包，服务器接收这些包并进行统计。客户端也会统计发送的数据量和时间，最终报告发送端的吞吐量。
-
-    - 客户端和服务器之间建立 TCP 连接（默认）。客户端以尽可能快的速度向服务器发送数据，服务器接收并记录数据量。双方都记录开始和结束时间。通过传输的数据量除以传输时间，即可计算出吞吐量。
-
-    - 在`qemu`内运行的`starry-next`同理，因为`qemu`与主机是通过`NAT`。在 `qemu` 虚拟机内部运行的 `starry-next`（假设它也包含 `iperf3` 客户端或服务器）与主机之间的网络通信，会经过 `qemu` 的网络虚拟化层。
-
-    - 当 `qemu` 使用 NAT（网络地址转换）模式时，虚拟机拥有一个私有 IP 地址，它通过主机的 IP 地址访问外部网络。对于虚拟机来说，主机看起来像一个路由器。
-
-    - 场景 : `qemu` 内的 `iperf3` 客户端连接到主机上的 `iperf3` 服务器。
-
-      - `qemu` 虚拟机内的 `iperf3 -c <主机IP地址>`。
-      - 数据流：`qemu` 客户端 -> `qemu` 虚拟网卡 -> `qemu` NAT 转换 -> 主机物理网卡 -> 主机 `iperf3` 服务器。
-      - 这种测试测量的是虚拟机到主机之间的网络性能，包括 `qemu` NAT 层的开销。
-      
-    - 无论哪种场景，`iperf3` 的基本客户端-服务器通信原理不变。`qemu` 的 NAT 模式只是在网络路径中增加了一个虚拟化的层，`iperf3` 测量的是经过这个虚拟化层后的实际吞吐量。 
     
-    - 关键设计点：
+      这段代码将 `sigend_handler` 函数注册为 `SIGINT`, `SIGTERM`, `SIGHUP` 这三个信号的处理函数。这意味着当程序接收到这些信号中的任何一个时，`sigend_handler` 函数就会被调用。
     
-      - ### 处理程序中断信号（如 `Ctrl+C`）的机制。它使用了 `signal` 和 `setjmp/longjmp` 组合来实现非局部跳转，以便在接收到中断信号时能够优雅地退出并报告结果。
+    - ### 信号处理的设置和跳转点
     
-      - `iperf_catch_sigend` 函数
+      ```c
+      iperf_catch_sigend(sigend_handler); // 注册信号处理函数
+      if (setjmp(sigend_jmp_buf)){ // 设置跳转点
+          printf("caught SIGEND\n");
+          iperf_got_sigend(test);
+      }
+      ```
+      - `if (setjmp(sigend_jmp_buf))`： 这是 `setjmp/longjmp` 机制的关键。
+      - `setjmp(sigend_jmp_buf)`：
+        第一次调用时（正常执行流程）： 它会保存当前程序的执行上下文到` sigend_jmp_buf` 中，并返回 0。因此，`if (setjmp(...)) `条件为假，程序会继续执行 if 语句块后面的代码。
+      - 当 `longjmp `被调用时（从信号处理函数中）：` longjmp` 会使用 `sigend_jmp_buf`中保存的上下文，使程序“跳回”到 `setjmp` 被调用的位置。此时，`setjmp` 会返回` longjmp` 传递的非零值（这里是 1）。因此，`if (setjmp(...)) `条件为真，if 语句块内的代码会被执行。
       
-        ``` c
-        void
-        iperf_catch_sigend(void (*handler)(int))
-        {
-        #ifdef SIGINT
-            signal(SIGINT, handler);
-        #endif
-        #ifdef SIGTERM
-            signal(SIGTERM, handler);
-        #endif
-        #ifdef SIGHUP
-            signal(SIGHUP, handler);
-        #endif
-        }
-        
-        ```
+    - ### `sigend_handler` 函数
+    
+      ```c
+      static jmp_buf sigend_jmp_buf; // 用于存储跳转上下文的缓冲区
+      static void __attribute__ ((noreturn))
+      sigend_handler(int sig)
+      {
+          longjmp(sigend_jmp_buf, 1);
+      }
       
-        这段代码将 `sigend_handler` 函数注册为 `SIGINT`, `SIGTERM`, `SIGHUP` 这三个信号的处理函数。这意味着当程序接收到这些信号中的任何一个时，`sigend_handler` 函数就会被调用。
+      ```
       
-      - ### 信号处理的设置和跳转点
+      - 这是实际的信号处理函数。
+        `__attribute__ ((noreturn))`： 这是一个 GCC 扩展属性，告诉编译器这个函数不会返回（即它会通过 longjmp 跳转出去，而不是正常返回）。这有助于编译器进行优化，并避免一些警告。
+        `longjmp(sigend_jmp_buf, 1);`： 这是核心操作。当` SIGINT`、`SIGTERM` 或 `SIGHUP` 信号被捕获时，这个函数会被调用，然后它会执行` longjmp`。
+      - `longjmp` 会将程序的执行流从当前位置（信号处理函数内部）直接跳转到 `setjmp(sigend_jmp_buf) `所在的位置。
       
-        ```c
-        iperf_catch_sigend(sigend_handler); // 注册信号处理函数
-        if (setjmp(sigend_jmp_buf)){ // 设置跳转点
-            printf("caught SIGEND\n");
-            iperf_got_sigend(test);
-        }
-        ```
-        - `if (setjmp(sigend_jmp_buf))`： 这是 `setjmp/longjmp` 机制的关键。
-        - `setjmp(sigend_jmp_buf)`：
-          第一次调用时（正常执行流程）： 它会保存当前程序的执行上下文到` sigend_jmp_buf` 中，并返回 0。因此，`if (setjmp(...)) `条件为假，程序会继续执行 if 语句块后面的代码。
-        - 当 `longjmp `被调用时（从信号处理函数中）：` longjmp` 会使用 `sigend_jmp_buf`中保存的上下文，使程序“跳回”到 `setjmp` 被调用的位置。此时，`setjmp` 会返回` longjmp` 传递的非零值（这里是 1）。因此，`if (setjmp(...)) `条件为真，if 语句块内的代码会被执行。
-        
-      - ### `sigend_handler` 函数
-      
-        ```c
-        static jmp_buf sigend_jmp_buf; // 用于存储跳转上下文的缓冲区
-        static void __attribute__ ((noreturn))
-        sigend_handler(int sig)
-        {
-            longjmp(sigend_jmp_buf, 1);
-        }
-        
-        ```
-        
-        - 这是实际的信号处理函数。
-          `__attribute__ ((noreturn))`： 这是一个 GCC 扩展属性，告诉编译器这个函数不会返回（即它会通过 longjmp 跳转出去，而不是正常返回）。这有助于编译器进行优化，并避免一些警告。
-          `longjmp(sigend_jmp_buf, 1);`： 这是核心操作。当` SIGINT`、`SIGTERM` 或 `SIGHUP` 信号被捕获时，这个函数会被调用，然后它会执行` longjmp`。
-        - `longjmp` 会将程序的执行流从当前位置（信号处理函数内部）直接跳转到 `setjmp(sigend_jmp_buf) `所在的位置。
-        
-      - ### `iperf_got_sigend` 函数
-      
-        - 捕获到中断信号后，实际执行清理、报告和退出的函数
-      
-      - 这段代码实现了一个健壮的信号处理机制，确保 `iperf3` 在接收到中断信号（如 `Ctrl+C`）时，能够：
-      
-        1. 立即停止当前的数据传输。
-        2. 收集并报告截至中断时的所有统计数据。
-        3. 通过控制连接通知另一端的 iperf3 进程，以便对方也能感知到测试的结束并进行相应的处理。
-        4. 最终优雅地退出程序。
+    - ### `iperf_got_sigend` 函数
+    
+      - 捕获到中断信号后，实际执行清理、报告和退出的函数
+    
+    - 这段代码实现了一个健壮的信号处理机制，确保 `iperf3` 在接收到中断信号（如 `Ctrl+C`）时，能够：
+    
+      1. 立即停止当前的数据传输。
+      2. 收集并报告截至中断时的所有统计数据。
+      3. 通过控制连接通知另一端的 iperf3 进程，以便对方也能感知到测试的结束并进行相应的处理。
+      4. 最终优雅地退出程序。
   
 ## 适配成功：
   ![iperf-V](./iperf-V.png)
