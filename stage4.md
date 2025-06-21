@@ -168,7 +168,7 @@
 
     ``` plain text 
       iperf3.service - iperf3 server
-          Loaded: loaded (/usr/lib/systemd/system/iperf3.service; enabled; preset: enabl>
+          Loaded: loaded (/usr/lib/systemd/system/iperf3.service; enabled; preset: enabled)
           Active: active (running) since Fri 2025-06-20 05:23:30 UTC; 7h ago
             Docs: man:iperf3(1)
         Main PID: 1326 (iperf3)
