@@ -145,6 +145,8 @@
 
    - [`sys_clock_gettime`的`CLOCK_PROCESS_CPUTIME_ID`](https://github.com/879650736/starry-next-net/blob/test/api/src/imp/time.rs)
 
+   - 全部通过[`libc`](https://github.com/879650736/starry-next-net/tree/test/apps/libc/c)测例测试，并测试通过
+
 10. 对于跨平台elf调试，使用
 
    ```c
