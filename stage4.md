@@ -6,9 +6,7 @@
 
 经历完这四个阶段，我取得了显著的收获：不仅深刻理解了操作系统内部的运行机制，更掌握了通过组件化管理实现现代化操作系统的方法。具体而言，我成功完成了`arceos-org/oscamp`的`aarch64`架构支持，并为`starry-next`适配了`iperf`的`TCP`部分。
 
-# 任务1 完成`arceos-org/oscamp`的`aarch64`架构的支持
-
-
+# 任务1 完成`arceos-org/oscamp`对`aarch64`架构的支持
 
 1. 使用`QEMU`的`monitor info mtree` 和`monitor info block` 找出`pflash`区域，并在[aarch64-qemu-virt.toml](https://github.com/879650736/oscamp/blob/main/arceos/platforms/aarch64-qemu-virt.toml)中增加正确的映射区域，在`tour`代码中写入正确的`PFLASH_START`
 
